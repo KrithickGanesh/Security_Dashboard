@@ -1,0 +1,42 @@
+[
+  {
+    "Description": "AWS Access Key",
+    "StartLine": 14,
+    "EndLine": 14,
+    "StartColumn": 18,
+    "EndColumn": 38,
+    "Match": "AKIAIOSFODNN7EXAMPLE",
+    "Secret": "AKIAIOSFODNN7EXAMPLE",
+    "File": "src/config/aws.js",
+    "SymlinkFile": "",
+    "Commit": "7f8b92c",
+    "Entropy": 3.78,
+    "Author": "dev-engineer",
+    "Email": "dev@company.local",
+    "Date": "2026-10-18T14:32:00Z",
+    "Message": "feat: configure S3 storage client credentials",
+    "Tags": [],
+    "RuleID": "aws-access-token",
+    "Fingerprint": "7f8b92c:src/config/aws.js:aws-access-token:14"
+  },
+  {
+    "Description": "Generic High-Entropy API Secret Token",
+    "StartLine": 42,
+    "EndLine": 42,
+    "StartColumn": 12,
+    "EndColumn": 52,
+    "Match": "sec_live_9f81a7b6c5d4e3f2109876543210abcd",
+    "Secret": "sec_live_9f81a7b6c5d4e3f2109876543210abcd",
+    "File": "services/stripePayment.js",
+    "SymlinkFile": "",
+    "Commit": "b3e210a",
+    "Entropy": 4.12,
+    "Author": "dev-engineer",
+    "Email": "dev@company.local",
+    "Date": "2026-10-19T09:15:00Z",
+    "Message": "fix: add production stripe webhook signing key",
+    "Tags": [],
+    "RuleID": "stripe-api-token",
+    "Fingerprint": "b3e210a:services/stripePayment.js:stripe-api-token:42"
+  }
+]

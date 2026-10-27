@@ -1,0 +1,341 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "DevSecOps Compliance & Security Monitoring Dashboard API",
+    "version": "1.0.0",
+    "description": "Production REST API for automated CI/CD pipeline scan ingestion, vulnerability lifecycle tracking, compliance control scoring, real-time alert dispatching, and immutable audit logging."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "API Key ID for CI/CD automation"
+      },
+      "HmacSignature": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Signature",
+        "description": "HMAC SHA-256 digest: sha256=<hex>"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "summary": "Register a new user account",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password", "confirmPassword"],
+                "properties": {
+                  "name": { "type": "string", "example": "Alex Rivera" },
+                  "email": { "type": "string", "example": "dev@company.com" },
+                  "password": { "type": "string", "example": "Password123!" },
+                  "confirmPassword": { "type": "string", "example": "Password123!" },
+                  "role": { "type": "string", "enum": ["Admin", "Security Analyst", "Developer", "Auditor"], "default": "Developer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User created successfully" },
+          "400": { "description": "Validation failure" },
+          "409": { "description": "Email already in use" }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Authenticate user, returns 15m access token and sets httpOnly refresh token cookie",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "example": "admin@devsecops.local" },
+                  "password": { "type": "string", "example": "Password123!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Authenticated successfully with accessToken" },
+          "401": { "description": "Invalid credentials or account locked" }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "summary": "Rotate refresh token and issue new 15m access token",
+        "tags": ["Authentication"],
+        "responses": {
+          "200": { "description": "Token rotated successfully" },
+          "401": { "description": "Missing or invalid refresh cookie" }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "summary": "Invalidate current refresh token session and clear cookie",
+        "tags": ["Authentication"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Logged out successfully" }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "summary": "Get authenticated user profile and permissions",
+        "tags": ["Authentication"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Profile data retrieved" }
+        }
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "summary": "List monitored projects with vulnerability metrics",
+        "tags": ["Projects"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Projects retrieved successfully" }
+        }
+      },
+      "post": {
+        "summary": "Register new microservice project",
+        "tags": ["Projects"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "key"],
+                "properties": {
+                  "name": { "type": "string", "example": "payment-service" },
+                  "key": { "type": "string", "example": "PAY-SRV" },
+                  "repository": { "type": "string", "example": "https://github.com/org/payment-service" },
+                  "description": { "type": "string" },
+                  "environment": { "type": "string", "enum": ["Production", "Staging", "Development"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Project created" },
+          "403": { "description": "Forbidden (Analyst / Admin only)" }
+        }
+      }
+    },
+    "/api/v1/vulnerabilities": {
+      "get": {
+        "summary": "Query vulnerabilities with search, filters, pagination, and SLA states",
+        "tags": ["Vulnerabilities"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "severity", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "tool", "in": "query", "schema": { "type": "string" } },
+          { "name": "project", "in": "query", "schema": { "type": "string" } },
+          { "name": "sla", "in": "query", "schema": { "type": "string", "enum": ["breached", "urgent", "compliant"] } }
+        ],
+        "responses": {
+          "200": { "description": "Vulnerabilities list" }
+        }
+      }
+    },
+    "/api/v1/vulnerabilities/{id}/status": {
+      "patch": {
+        "summary": "Update remediation lifecycle state",
+        "tags": ["Vulnerabilities"],
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["Open", "In Progress", "Resolved", "False Positive", "Accepted Risk"] },
+                  "notes": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Status updated and logged in activity trail" }
+        }
+      }
+    },
+    "/api/v1/webhooks/scan": {
+      "post": {
+        "summary": "HMAC SHA-256 authenticated webhook for automated CI/CD pipeline scans",
+        "tags": ["Scan Ingestion"],
+        "security": [{ "ApiKeyAuth": [] }, { "HmacSignature": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["project", "tool", "scanType", "report"],
+                "properties": {
+                  "project": { "type": "string", "example": "payment-service" },
+                  "tool": { "type": "string", "enum": ["trivy", "gitleaks", "npm-audit", "semgrep"] },
+                  "scanType": { "type": "string", "enum": ["SAST", "SCA", "Secret", "Container", "IaC", "DAST"] },
+                  "pipeline": {
+                    "type": "object",
+                    "properties": {
+                      "provider": { "type": "string", "example": "github-actions" },
+                      "runId": { "type": "string", "example": "12345" },
+                      "branch": { "type": "string", "example": "main" },
+                      "commit": { "type": "string", "example": "a1b2c3d" }
+                    }
+                  },
+                  "report": { "type": "object", "description": "Raw scanner JSON report" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Scan ingested, vulnerabilities synchronized, gate evaluated" },
+          "401": { "description": "Invalid API key or HMAC signature mismatch" }
+        }
+      }
+    },
+    "/api/v1/pipelines": {
+      "get": {
+        "summary": "List CI/CD pipeline execution runs and gate results",
+        "tags": ["CI/CD Pipelines"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Pipelines list" }
+        }
+      }
+    },
+    "/api/v1/compliance/frameworks": {
+      "get": {
+        "summary": "List compliance frameworks and adherence ratings",
+        "tags": ["Compliance"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Frameworks list" }
+        }
+      }
+    },
+    "/api/v1/incidents": {
+      "get": {
+        "summary": "List security incident response queue",
+        "tags": ["Incidents"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Incidents list" }
+        }
+      },
+      "post": {
+        "summary": "Declare a security incident",
+        "tags": ["Incidents"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "201": { "description": "Incident registered" }
+        }
+      }
+    },
+    "/api/v1/reports/executive-summary/pdf": {
+      "get": {
+        "summary": "Download official Executive Security & Compliance Posture PDF",
+        "tags": ["Reports"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Streamed PDF document generated via pdfkit",
+            "content": { "application/pdf": {} }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/vulnerabilities/csv": {
+      "get": {
+        "summary": "Export raw vulnerability telemetry to CSV",
+        "tags": ["Reports"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Streamed CSV file generated via json2csv",
+            "content": { "text/csv": {} }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/stats": {
+      "get": {
+        "summary": "Real-time command center telemetry, severity donuts, and trends",
+        "tags": ["Dashboard"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Aggregated metrics" }
+        }
+      }
+    },
+    "/api/v1/admin/stats": {
+      "get": {
+        "summary": "Admin system health and session metrics",
+        "tags": ["Admin"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "System health and active session metrics" },
+          "403": { "description": "Admin access required" }
+        }
+      }
+    },
+    "/api/v1/audit-logs": {
+      "get": {
+        "summary": "Filter and inspect immutable tamper-evident audit logs",
+        "tags": ["Audit Logs"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Audit records retrieved" }
+        }
+      }
+    }
+  }
+}

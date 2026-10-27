@@ -1,0 +1,186 @@
+{
+  "info": {
+    "name": "DevSecOps Security & Compliance Dashboard API",
+    "description": "Comprehensive Postman collection for testing Authentication, Projects, Vulnerability SLAs, CI Webhook Ingestion with HMAC signatures, Compliance Controls, Incidents, and Admin Operations.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "apiKey",
+      "value": "dso_live_github_actions_prod_001",
+      "type": "string"
+    },
+    {
+      "key": "apiSecret",
+      "value": "dso_sec_99a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@devsecops.local\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Get Profile (Me)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Dashboard & Posture",
+      "item": [
+        {
+          "name": "Get Dashboard Telemetry & Stats",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/dashboard/stats", "host": ["{{baseUrl}}"], "path": ["dashboard", "stats"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Projects & Vulnerabilities",
+      "item": [
+        {
+          "name": "List Monitored Projects",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/projects", "host": ["{{baseUrl}}"], "path": ["projects"] }
+          }
+        },
+        {
+          "name": "List Vulnerabilities (with filters)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/vulnerabilities?severity=Critical,High&page=1", "host": ["{{baseUrl}}"], "path": ["vulnerabilities"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Automated CI Webhook (HMAC Signed)",
+      "item": [
+        {
+          "name": "Ingest Trivy Scan Report",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-API-Key", "value": "{{apiKey}}" },
+              { "key": "X-Signature", "value": "sha256=<compute_hmac_hex>" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project\": \"payment-service\",\n  \"tool\": \"trivy\",\n  \"scanType\": \"SCA\",\n  \"pipeline\": {\n    \"provider\": \"github-actions\",\n    \"runId\": \"1055\",\n    \"branch\": \"main\",\n    \"commit\": \"a1b2c3d\"\n  },\n  \"report\": {\n    \"Results\": []\n  }\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/webhooks/scan", "host": ["{{baseUrl}}"], "path": ["webhooks", "scan"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Compliance & Frameworks",
+      "item": [
+        {
+          "name": "List Frameworks & Scores",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/frameworks", "host": ["{{baseUrl}}"], "path": ["frameworks"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Incident Response",
+      "item": [
+        {
+          "name": "List Incidents Queue",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/incidents", "host": ["{{baseUrl}}"], "path": ["incidents"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Reports & Exports",
+      "item": [
+        {
+          "name": "Download Executive Posture PDF",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/reports/executive-summary/pdf", "host": ["{{baseUrl}}"], "path": ["reports", "executive-summary", "pdf"] }
+          }
+        },
+        {
+          "name": "Export Vulnerabilities CSV",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/reports/vulnerabilities/csv", "host": ["{{baseUrl}}"], "path": ["reports", "vulnerabilities", "csv"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Admin Suite & Audit Logs",
+      "item": [
+        {
+          "name": "Admin Health & Session Stats",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/admin/stats", "host": ["{{baseUrl}}"], "path": ["admin", "stats"] }
+          }
+        },
+        {
+          "name": "Query Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl}}/audit-logs", "host": ["{{baseUrl}}"], "path": ["audit-logs"] }
+          }
+        }
+      ]
+    }
+  ]
+}

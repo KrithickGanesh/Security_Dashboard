@@ -1,0 +1,146 @@
+name: DevSecOps Continuous Security Inspection
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security-scans:
+    name: Execute Security Scanners & Dispatch Reports
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # -------------------------------------------------------------
+      # 1. Gitleaks: Secret Scanning
+      # -------------------------------------------------------------
+      - name: Run Gitleaks Secret Detector
+        uses: gitleaks/gitleaks-action@v2.3.9
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+          GITLEAKS_ENABLE_SUMMARY: true
+
+      - name: Export Gitleaks JSON Report
+        run: |
+          docker run --rm -v "$PWD:/pwd" zricethezav/gitleaks:v8.18.2 detect --source="/pwd" --report-format=json --report-path="/pwd/gitleaks-report.json" || true
+
+      # -------------------------------------------------------------
+      # 2. Trivy: Filesystem & Dependency Vulnerability Scanning
+      # -------------------------------------------------------------
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@0.29.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'json'
+          output: 'trivy-report.json'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+        continue-on-error: true
+
+      # -------------------------------------------------------------
+      # 3. npm audit: Dependency Vulnerabilities
+      # -------------------------------------------------------------
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run npm audit
+        run: |
+          npm audit --json > npm-audit-report.json || true
+
+      # -------------------------------------------------------------
+      # 4. Sign and Ingest Reports to DevSecOps Dashboard
+      # -------------------------------------------------------------
+      - name: Ingest Scans to DevSecOps Monitoring Dashboard
+        env:
+          DASHBOARD_URL: ${{ secrets.DASHBOARD_URL }}
+          API_KEY: ${{ secrets.DASHBOARD_API_KEY }}
+          API_SECRET: ${{ secrets.DASHBOARD_API_SECRET }}
+          PROJECT_KEY: 'PAY-SVC'
+          RUN_ID: ${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+          BRANCH: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          echo "Ingesting Security Reports to $DASHBOARD_URL..."
+
+          dispatch_report() {
+            local TOOL=$1
+            local SCAN_TYPE=$2
+            local FILE_PATH=$3
+
+            if [ ! -f "$FILE_PATH" ]; then
+              echo "Skipping $TOOL: report file $FILE_PATH does not exist."
+              return
+            fi
+
+            echo "Ingesting $TOOL ($SCAN_TYPE) from $FILE_PATH..."
+
+            # Wrap into unified dashboard webhook schema
+            PAYLOAD=$(jq -n \
+              --arg project "$PROJECT_KEY" \
+              --arg tool "$TOOL" \
+              --arg scanType "$SCAN_TYPE" \
+              --arg provider "github-actions" \
+              --arg runId "$RUN_ID" \
+              --arg runUrl "https://github.com/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" \
+              --arg branch "$BRANCH" \
+              --arg commit "$COMMIT_SHA" \
+              --arg triggeredBy "$ACTOR" \
+              --slurpfile report "$FILE_PATH" \
+              '{
+                project: $project,
+                tool: $tool,
+                scanType: $scanType,
+                pipeline: {
+                  provider: $provider,
+                  runId: $runId,
+                  runUrl: $runUrl,
+                  branch: $branch,
+                  commit: $commit,
+                  triggeredBy: $triggeredBy
+                },
+                report: $report[0]
+              }')
+
+            # Compute HMAC-SHA256 signature of the raw JSON body
+            SIGNATURE=$(printf "%s" "$PAYLOAD" | openssl dgst -sha256 -hmac "$API_SECRET" | sed 's/^.* //')
+
+            # Dispatch HTTP POST request with cryptographic headers
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$DASHBOARD_URL/api/v1/webhooks/scan" \
+              -H "Content-Type: application/json" \
+              -H "X-API-Key: $API_KEY" \
+              -H "X-Signature: sha256=$SIGNATURE" \
+              --data "$PAYLOAD")
+
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
+
+            echo "Response HTTP Code: $HTTP_CODE"
+            echo "Response Body: $BODY"
+
+            if [ "$HTTP_CODE" -ne 200 ]; then
+              echo "Warning: Ingestion for $TOOL returned code $HTTP_CODE"
+            fi
+          }
+
+          # Dispatch Trivy report
+          dispatch_report "trivy" "SCA" "trivy-report.json"
+
+          # Dispatch Gitleaks report
+          dispatch_report "gitleaks" "Secret" "gitleaks-report.json"
+
+          # Dispatch npm-audit report
+          dispatch_report "npm-audit" "SCA" "npm-audit-report.json"

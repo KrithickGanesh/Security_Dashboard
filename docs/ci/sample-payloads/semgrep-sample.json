@@ -1,0 +1,36 @@
+{
+  "version": "1.65.0",
+  "results": [
+    {
+      "check_id": "javascript.express.security.audit.sqli.node-sqli",
+      "path": "src/controllers/user.controller.js",
+      "start": { "line": 28, "col": 5 },
+      "end": { "line": 28, "col": 62 },
+      "extra": {
+        "message": "Untrusted input concatenated into SQL/raw query string without parameterization.",
+        "severity": "ERROR",
+        "metadata": {
+          "cwe": "CWE-89",
+          "owasp": "A03:2021 - Injection",
+          "shortlink": "SQL Injection in User Query",
+          "fix": "Use parameterized queries or ORM query builders."
+        }
+      }
+    },
+    {
+      "check_id": "javascript.express.security.audit.xss.direct-response-write",
+      "path": "src/controllers/render.controller.js",
+      "start": { "line": 15, "col": 3 },
+      "end": { "line": 15, "col": 40 },
+      "extra": {
+        "message": "Direct writing of unescaped user input into HTTP response body (Reflected XSS).",
+        "severity": "WARNING",
+        "metadata": {
+          "cwe": "CWE-79",
+          "owasp": "A03:2021 - Injection",
+          "shortlink": "Reflected Cross-Site Scripting"
+        }
+      }
+    }
+  ]
+}
