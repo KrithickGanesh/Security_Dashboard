@@ -58,12 +58,15 @@ export const SocketProvider = ({ children }) => {
       return;
     }
 
-    const socketInstance = io('/', {
-      auth: { token: accessToken },
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 2000
-    });
+    const socketInstance = io(
+      import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || '/',
+      {
+        auth: { token: accessToken },
+        transports: ['websocket', 'polling'],
+        reconnectionAttempts: 5,
+        reconnectionDelay: 2000
+      }
+    );
 
     socketInstance.on('connect', () => {
       setIsConnected(true);

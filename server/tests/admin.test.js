@@ -15,7 +15,10 @@ describe('Admin & Audit Suite Tests', () => {
   let devUser;
 
   beforeAll(async () => {
-    const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/devsecops_test';
+    // Never fall back to process.env.MONGO_URI: dotenv loads the development
+    // URI, and this suite deletes audit records.
+    const mongoUri =
+      process.env.TEST_MONGO_URI || 'mongodb://127.0.0.1:27017/devsecops_test_db';
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(mongoUri);
     }

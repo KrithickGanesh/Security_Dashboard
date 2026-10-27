@@ -24,6 +24,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import swaggerUi from 'swagger-ui-express';
 import logger from './utils/logger.js';
+import { isOriginAllowed } from './config/cors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,6 +36,11 @@ dotenv.config();
 
 const app = express();
 
+// Behind nginx, Render, Railway or any load balancer, req.ip is the proxy
+// address unless Express is told how many hops to trust. Without this, rate
+// limiting and audit logs would attribute every client to the proxy.
+app.set('trust proxy', Number(process.env.TRUST_PROXY ?? 1));
+
 // Security HTTP headers
 app.use(
   helmet({
@@ -43,16 +49,11 @@ app.use(
 );
 
 // CORS configuration
-const allowedOrigins = [
-  process.env.CLIENT_URL || 'http://localhost:5173',
-  'http://127.0.0.1:5173'
-];
-
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (e.g. mobile apps, curl, postman)
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (isOriginAllowed(origin)) {
         return callback(null, true);
       }
       return callback(new Error('Blocked by CORS policy'));

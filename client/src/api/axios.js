@@ -1,5 +1,13 @@
 import axios from 'axios';
 
+/**
+ * In development the SPA talks to the API through the Vite proxy, so a
+ * relative base URL is correct. In production the frontend may be hosted on a
+ * different origin (e.g. Vercel) from the API (e.g. Render), so the absolute
+ * URL is injected at build time via VITE_API_URL.
+ */
+const API_ROOT = `${(import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')}/api/v1`;
+
 let accessToken = localStorage.getItem('dso_token') || null;
 
 const SESSION_HINT_KEY = 'dso_has_session';
@@ -25,7 +33,7 @@ export const hasSessionHint = () => localStorage.getItem(SESSION_HINT_KEY) === '
 export const clearSessionHint = () => localStorage.removeItem(SESSION_HINT_KEY);
 
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: API_ROOT,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
@@ -91,7 +99,7 @@ api.interceptors.response.use(
 
       try {
         const { data } = await axios.post(
-          '/api/v1/auth/refresh',
+          `${API_ROOT}/auth/refresh`,
           {},
           { withCredentials: true }
         );

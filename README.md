@@ -331,3 +331,40 @@ npm test
 - `tests/incidents_reports_dashboard.test.js`: Incident lifecycle, PDF streaming, CSV exports.
 
 **Results: 7 passed, 7 total (41/41 tests passed).**
+
+---
+
+## 9. Deployment
+
+Two supported targets:
+
+### Vercel (UI) + Render (API) + MongoDB Atlas
+
+Free-tier deployment where the SPA and the API are separate origins.
+Full walkthrough: **[`docs/DEPLOYMENT_VERCEL.md`](docs/DEPLOYMENT_VERCEL.md)**
+
+Required configuration at a glance:
+
+| Where | Key | Value |
+|---|---|---|
+| Vercel | `VITE_API_URL` | `https://<api>.onrender.com` |
+| Render | `MONGO_URI` | Atlas connection string |
+| Render | `CLIENT_URL` | `https://<app>.vercel.app` |
+| Render | `COOKIE_SAME_SITE` | `none` (cross-site refresh cookie) |
+| Render | `TRUST_PROXY` | `1` |
+
+A `render.yaml` Blueprint is included for the API service.
+
+### Docker Compose (single origin)
+
+The repository's `docker-compose.yml` + `nginx.conf` already proxy `/api` and
+`/socket.io`, so the SPA and API share one origin and no CORS or absolute API
+URL is needed. Add TLS (Caddy or Certbot) and point `MONGO_URI` at Atlas.
+
+### Pre-deployment checks
+
+```bash
+cd server && npm test          # 41 tests
+cd ../client && npm run build  # production bundle
+cd ../server && npm run db:verify
+```
