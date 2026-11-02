@@ -24,7 +24,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import swaggerUi from 'swagger-ui-express';
 import logger from './utils/logger.js';
-import { isOriginAllowed } from './config/cors.js';
+import { isOriginAllowed, getAllowedOrigins } from './config/cors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,7 +56,13 @@ app.use(
       if (isOriginAllowed(origin)) {
         return callback(null, true);
       }
-      return callback(new Error('Blocked by CORS policy'));
+      // 403 rather than a generic 500, and say exactly which origin was rejected
+      // so a deployment mismatch is diagnosable from the response itself.
+      const error = new Error(
+        `Origin ${origin} is not allowed. Add it to CLIENT_URL. Allowed origins: ${getAllowedOrigins().join(', ')}`
+      );
+      error.statusCode = 403;
+      return callback(error);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
