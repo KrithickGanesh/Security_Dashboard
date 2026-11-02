@@ -1,0 +1,23 @@
+# Build context is the repository root, so exclude everything that is
+# either regenerated inside the image or must never leave the machine.
+
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+!**/.env.example
+
+.git
+.gitignore
+.github
+
+docs
+*.md
+
+server/tests
+server/jest.config.js
+server/scripts
+
+client/vercel.json
+render.yaml
+docker-compose.yml

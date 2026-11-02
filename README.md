@@ -336,30 +336,30 @@ npm test
 
 ## 9. Deployment
 
-Two supported targets:
+### Render (single service) + MongoDB Atlas
 
-### Vercel (UI) + Render (API) + MongoDB Atlas
-
-Free-tier deployment where the SPA and the API are separate origins.
-Full walkthrough: **[`docs/DEPLOYMENT_VERCEL.md`](docs/DEPLOYMENT_VERCEL.md)**
-
-Required configuration at a glance:
+One Render web service serves both the React SPA and the Express API from the
+same origin, so CORS, cross-site cookies and WebSocket proxying are not needed.
+Full walkthrough: **[`docs/DEPLOYMENT_RENDER.md`](docs/DEPLOYMENT_RENDER.md)**
 
 | Where | Key | Value |
 |---|---|---|
-| Vercel | `VITE_API_URL` | `https://<api>.onrender.com` |
 | Render | `MONGO_URI` | Atlas connection string |
-| Render | `CLIENT_URL` | `https://<app>.vercel.app` |
-| Render | `COOKIE_SAME_SITE` | `none` (cross-site refresh cookie) |
+| Render | `JWT_SECRET` | 64-char random hex |
+| Render | `CLIENT_URL` | the service's own URL |
+| Render | `COOKIE_SAME_SITE` | `strict` (same origin) |
+| Render | `COOKIE_SECURE` | `true` |
 | Render | `TRUST_PROXY` | `1` |
 
-A `render.yaml` Blueprint is included for the API service.
+The root `Dockerfile` builds the SPA in a first stage and copies `dist` into
+the API image at `/app/public`; Express serves it with an SPA fallback.
+`render.yaml` is a ready-made Blueprint.
 
-### Docker Compose (single origin)
+### Docker Compose (self-hosted)
 
-The repository's `docker-compose.yml` + `nginx.conf` already proxy `/api` and
-`/socket.io`, so the SPA and API share one origin and no CORS or absolute API
-URL is needed. Add TLS (Caddy or Certbot) and point `MONGO_URI` at Atlas.
+`docker-compose.yml` + `nginx.conf` proxy `/api` and `/socket.io` to the
+backend container, so the SPA and API also share one origin there. Add TLS
+(Caddy or Certbot) and point `MONGO_URI` at Atlas.
 
 ### Pre-deployment checks
 

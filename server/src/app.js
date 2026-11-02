@@ -137,14 +137,55 @@ app.use('/api/v1/incidents', incidentRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 
-// Catch-all 404 for undefined routes
-app.use('*', (req, res) => {
+// ---------------------------------------------------------------
+// Single-origin deployment: when a built SPA is bundled with the API
+// (Docker image, Render), Express serves it from PUBLIC_DIR.
+// In local development the Vite dev server serves the SPA instead and
+// this block is skipped because no build directory exists.
+// ---------------------------------------------------------------
+const publicDir = process.env.PUBLIC_DIR || path.resolve(__dirname, '../public');
+const clientIndex = path.join(publicDir, 'index.html');
+const hasClientBuild = fs.existsSync(clientIndex);
+
+if (hasClientBuild) {
+  app.use(
+    express.static(publicDir, {
+      index: false,
+      setHeaders: (res, filePath) => {
+        // Hashed asset filenames can be cached aggressively; index.html must not.
+        if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+      }
+    })
+  );
+}
+
+// Unknown API routes stay JSON so clients never receive HTML by accident.
+app.use('/api', (req, res) => {
   res.status(404).json({
     success: false,
     message: `Endpoint not found: ${req.method} ${req.originalUrl}`,
     data: null
   });
 });
+
+if (hasClientBuild) {
+  // SPA fallback: let React Router handle deep links such as /vulnerabilities.
+  app.get('*', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(clientIndex);
+  });
+} else {
+  // Catch-all 404 for undefined routes (API-only mode).
+  app.use('*', (req, res) => {
+    res.status(404).json({
+      success: false,
+      message: `Endpoint not found: ${req.method} ${req.originalUrl}`,
+      data: null
+    });
+  });
+}
 
 // Centralized error handling middleware
 app.use(errorHandler);

@@ -1,17 +1,19 @@
-# Render Blueprint - API service only.
-# The frontend is deployed separately on Vercel.
+# Render Blueprint - single service that serves the SPA and the API.
 #
 # Usage: Render Dashboard -> New -> Blueprint -> select this repository.
-# After the first deploy, fill in MONGO_URI and CLIENT_URL when prompted.
+# After provisioning, set MONGO_URI and CLIENT_URL in the dashboard.
+#
+# CLIENT_URL must be the service's own public URL, e.g.
+#   https://devsecops-dashboard.onrender.com
 
 services:
   - type: web
-    name: devsecops-api
+    name: devsecops-dashboard
     runtime: docker
     plan: free
     region: singapore
-    dockerContext: ./server
-    dockerfilePath: ./server/Dockerfile
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /api/v1/health
     autoDeploy: true
     envVars:
@@ -21,15 +23,15 @@ services:
         value: "5000"
       - key: TRUST_PROXY
         value: "1"
-      # Cross-site cookies: required when the SPA is on a vercel.app domain.
+      # Same origin -> strict cookies are correct and safest.
       - key: COOKIE_SAME_SITE
-        value: none
+        value: strict
       - key: COOKIE_SECURE
         value: "true"
       # MongoDB Atlas connection string (set manually).
       - key: MONGO_URI
         sync: false
-      # Vercel production domain, e.g. https://security-dashboard.vercel.app
+      # This service's own public URL (set manually after first deploy).
       - key: CLIENT_URL
         sync: false
       # Generated once by Render and kept secret.
