@@ -266,7 +266,9 @@ const SAST_LIBRARY = [
 ];
 
 export async function seedDatabase() {
-  console.log('🚀 Connecting to MongoDB:', MONGO_URI);
+  // Never print credentials: this log can end up in CI or hosting dashboards.
+  const redactedUri = MONGO_URI.replace(/\/\/([^:/@]+):([^@]+)@/, '//$1:****@');
+  console.log('🚀 Connecting to MongoDB:', redactedUri);
   await mongoose.connect(MONGO_URI);
 
   console.log('🧹 Clearing existing collections...');
